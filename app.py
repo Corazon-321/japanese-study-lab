@@ -654,7 +654,7 @@ def initialize_state() -> None:
     """Initialize all application state."""
 
     defaults = {
-        "theme": "🌸 Sakura",
+        "theme": "🌙 Midnight Cyber-Tokyo",
 
         # Current screen.
         "page": "Study",
