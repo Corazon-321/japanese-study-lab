@@ -1532,14 +1532,31 @@ h1, h2, h3, h4, h5, p {{
    SIDEBAR
    ============================================================== */
 
-section[data-testid="stSidebar"] {{
+section[data-testid="stMain"] {
+    margin-left: 21rem;
 
     background:
         var(--card-bg);
 
     border-right:
         1px solid var(--border);
-}}
+
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    height: 100vh;
+
+    overflow-y: auto;
+
+    z-index: 999;
+
+    scrollbar-width: thin;
+}
+
+section[data-testid="stMain"] {
+    margin-left: 21rem;
+}
 
 
 /* ==============================================================
@@ -1930,7 +1947,18 @@ section[data-testid="stSidebar"] {{
    MOBILE
    ============================================================== */
 
-@media (max-width: 700px) {{
+@media (max-width: 700px) {
+
+    section[data-testid="stSidebar"] {
+        position: fixed;
+        height: 100vh;
+    }
+
+    section[data-testid="stMain"] {
+        margin-left: 0;
+
+    }
+}
 
     .main .block-container {{
 
