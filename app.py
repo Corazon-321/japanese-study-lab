@@ -910,7 +910,7 @@ def build_stroke_player(
     """
     Build a self-contained interactive HTML stroke player.
 
-    This is intentionally rendered with st.iframe() because Streamlit's
+    This is intentionally rendered with () because Streamlit's
     iframe HTML rendering supports JavaScript execution. Current Streamlit
     documentation explicitly supports raw HTML strings as iframe content.
     """
@@ -1518,7 +1518,6 @@ def render_stroke_guide(
     st.iframe(
         player,
         height=360,
-        scrolling=False,
     )
 
     st.caption(
