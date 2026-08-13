@@ -2,20 +2,26 @@
 JP Japanese Lab
 ================
 
-Interactive Japanese study application built with Streamlit + gTTS.
+Interactive Japanese study application built with:
+
+    - Streamlit
+    - gTTS
+    - KanjiVG SVG stroke references
+    - Python standard library
 
 FEATURES
 --------
 STUDY
     - Hiragana Gojūon
     - Katakana Gojūon
-    - On-demand Japanese TTS
-    - Autoplay-capable audio player
+    - ▶ Play pronunciation buttons
+    - Autoplay-capable gTTS audio
+    - Cached audio
     - Compact mobile-friendly kana cards
-    - Animated KanjiVG stroke-order viewer
+    - Stroke-order reference
     - Essential phrases
-    - Grammar / particle reference
-    - Counter reference
+    - Grammar / particles
+    - Counters
 
 QUIZ
     - Hiragana
@@ -26,20 +32,20 @@ QUIZ
     - Counters & Quantifiers
     - 10 / 25 / 50 questions
     - Randomized choices
-    - Live progress
     - Live score
-    - Star rating
-    - Mistake tracking
-    - Targeted missed-question review
+    - Progress bar
+    - 0–3 star rating
+    - Missed-question tracker
+    - Targeted missed-question quiz
 
-TECHNICAL
+IMPORTANT
 ---------
-    - Streamlit session_state for persistent quiz state
-    - gTTS audio generated into BytesIO
-    - No temporary MP3 files
-    - Audio cached by Streamlit
-    - KanjiVG SVGs fetched and cached
-    - Custom Sakura / Cyber-Tokyo themes
+gTTS requires internet access.
+
+Audio is generated entirely in memory using io.BytesIO.
+No temporary MP3 files are written to disk.
+
+KanjiVG stroke references are loaded remotely when requested.
 
 RUN
 ---
@@ -73,7 +79,7 @@ st.set_page_config(
 
 
 # =============================================================================
-# THEME CONFIGURATION
+# THEMES
 # =============================================================================
 
 THEMES = {
@@ -133,16 +139,16 @@ KATAKANA_ROWS: List[Tuple[str, List[Tuple[str, str]]]] = [
     ("Y", [("ヤ", "ya"), ("", ""), ("ユ", "yu"), ("", ""), ("ヨ", "yo")]),
     ("R", [("ラ", "ra"), ("リ", "ri"), ("ル", "ru"), ("レ", "re"), ("ロ", "ro")]),
     ("W", [("ワ", "wa"), ("", ""), ("", ""), ("", ""), ("ヲ", "o")]),
-    ("N", [("ン", "n"), ("", ""), ("", ""), ("", "")]),
+    ("N", [("ン", "n"), ("", ""), ("", ""), ("", ""), ("", "")]),
 ]
 
 
 # =============================================================================
-# STROKE COUNT / HANDWRITING NOTES
+# STROKE INFORMATION
 # =============================================================================
 
 STROKE_INFO: Dict[str, Tuple[int, str]] = {
-    "あ": (3, "Short top stroke → central curved stroke → final sweeping stroke."),
+    "あ": (3, "Short top stroke → central curve → final sweeping stroke."),
     "い": (2, "Left stroke first → right stroke."),
     "う": (2, "Small top mark → larger curved stroke."),
     "え": (2, "Short top stroke → longer lower stroke."),
@@ -163,7 +169,7 @@ STROKE_INFO: Dict[str, Tuple[int, str]] = {
     "て": (1, "One stroke from upper left."),
     "と": (2, "Short diagonal → long curved stroke."),
     "な": (4, "Left component → center structure → lower curve."),
-    "に": (3, "Short horizontal strokes → vertical/curved ending."),
+    "に": (3, "Short horizontal strokes → curved ending."),
     "ぬ": (2, "Main curve → crossing loop."),
     "ね": (4, "Left component → upper/right structure → looped finish."),
     "の": (1, "One continuous rounded stroke."),
@@ -290,7 +296,7 @@ PARTICLE_QUESTIONS = [
         "japanese": "わたし ___ 学生です。",
         "answer": "は",
         "choices": ["は", "を", "で", "に"],
-        "explanation": "は marks the topic. It is pronounced 'wa' when used as a particle.",
+        "explanation": "は marks the topic. When used as a particle, it is pronounced 'wa'.",
     },
     {
         "prompt": "Which particle expresses possession or connection?",
@@ -304,7 +310,7 @@ PARTICLE_QUESTIONS = [
         "japanese": "水 ___ 飲みます。",
         "answer": "を",
         "choices": ["を", "は", "に", "で"],
-        "explanation": "を marks the direct object.",
+        "explanation": "を marks the direct object of the verb.",
     },
     {
         "prompt": "Which particle marks a destination?",
@@ -325,7 +331,7 @@ PARTICLE_QUESTIONS = [
         "japanese": "猫 ___ います。",
         "answer": "が",
         "choices": ["が", "を", "で", "の"],
-        "explanation": "が often marks the grammatical subject or new information.",
+        "explanation": "が commonly marks the subject or new information.",
     },
 ]
 
@@ -381,7 +387,7 @@ COUNTER_QUESTIONS = [
 
 
 # =============================================================================
-# DATA MODEL
+# QUESTION MODEL
 # =============================================================================
 
 @dataclass
@@ -396,7 +402,7 @@ class Question:
 
 
 # =============================================================================
-# QUESTION GENERATORS
+# QUESTION BANK GENERATION
 # =============================================================================
 
 def make_kana_questions(
@@ -404,7 +410,7 @@ def make_kana_questions(
     category: str,
     prefix: str,
 ) -> List[Question]:
-    """Generate kana reading and recognition questions."""
+    """Create kana recognition and reading questions."""
 
     items = [
         (kana, romaji)
@@ -413,8 +419,8 @@ def make_kana_questions(
         if kana
     ]
 
-    symbols = [x[0] for x in items]
-    readings = [x[1] for x in items]
+    symbols = [kana for kana, _ in items]
+    readings = [romaji for _, romaji in items]
 
     questions: List[Question] = []
 
@@ -458,9 +464,9 @@ def make_kana_questions(
 
 
 def make_phrase_questions() -> List[Question]:
-    """Generate phrase translation questions."""
+    """Create phrase questions."""
 
-    result: List[Question] = []
+    results: List[Question] = []
 
     english = [x[1] for x in PHRASES]
     japanese = [x[0] for x in PHRASES]
@@ -472,7 +478,7 @@ def make_phrase_questions() -> List[Question]:
             3,
         )
 
-        result.append(
+        results.append(
             Question(
                 question_id=f"phrase_meaning_{index}",
                 category="Phrases & Sentences",
@@ -489,7 +495,7 @@ def make_phrase_questions() -> List[Question]:
             3,
         )
 
-        result.append(
+        results.append(
             Question(
                 question_id=f"phrase_reverse_{index}",
                 category="Phrases & Sentences",
@@ -501,13 +507,14 @@ def make_phrase_questions() -> List[Question]:
             )
         )
 
-    return result
+    return results
 
 
 def make_sentence_questions() -> List[Question]:
-    """Generate sentence comprehension questions."""
+    """Create sentence translation questions."""
 
-    result: List[Question] = []
+    results: List[Question] = []
+
     translations = [x[1] for x in SENTENCES]
 
     for index, (jp, en) in enumerate(SENTENCES):
@@ -517,7 +524,7 @@ def make_sentence_questions() -> List[Question]:
             3,
         )
 
-        result.append(
+        results.append(
             Question(
                 question_id=f"sentence_{index}",
                 category="Phrases & Sentences",
@@ -529,20 +536,20 @@ def make_sentence_questions() -> List[Question]:
             )
         )
 
-    return result
+    return results
 
 
 def make_particle_questions() -> List[Question]:
-    """Create Question objects from particle data."""
+    """Create particle Question objects."""
 
-    result = []
+    results: List[Question] = []
 
     for index, item in enumerate(PARTICLE_QUESTIONS):
 
         choices = item["choices"].copy()
         random.shuffle(choices)
 
-        result.append(
+        results.append(
             Question(
                 question_id=f"particle_{index}",
                 category="Grammar & Particles",
@@ -554,20 +561,20 @@ def make_particle_questions() -> List[Question]:
             )
         )
 
-    return result
+    return results
 
 
 def make_counter_questions() -> List[Question]:
-    """Create Question objects from counter data."""
+    """Create counter Question objects."""
 
-    result = []
+    results: List[Question] = []
 
     for index, item in enumerate(COUNTER_QUESTIONS):
 
         choices = item["choices"].copy()
         random.shuffle(choices)
 
-        result.append(
+        results.append(
             Question(
                 question_id=f"counter_{index}",
                 category="Counters & Quantifiers",
@@ -579,11 +586,11 @@ def make_counter_questions() -> List[Question]:
             )
         )
 
-    return result
+    return results
 
 
 def build_question_bank() -> List[Question]:
-    """Build the entire question bank."""
+    """Build the complete question bank."""
 
     bank: List[Question] = []
 
@@ -616,12 +623,14 @@ def build_question_bank() -> List[Question]:
 # =============================================================================
 
 def initialize_state() -> None:
-    """Initialize persistent session values exactly once."""
+    """Create session-state values once."""
 
     defaults = {
         "theme": "🌸 Sakura",
         "page": "Study",
+
         "question_bank": build_question_bank(),
+
         "quiz_questions": [],
         "quiz_index": 0,
         "quiz_score": 0,
@@ -630,6 +639,7 @@ def initialize_state() -> None:
         "quiz_options": {},
         "missed_questions": [],
         "quiz_mode": "normal",
+
         "quiz_length": 10,
         "quiz_categories": [
             "Hiragana",
@@ -650,6 +660,22 @@ initialize_state()
 
 
 # =============================================================================
+# CUSTOM HTML HELPER
+# =============================================================================
+
+def render_html(
+    html: str,
+) -> None:
+    """
+    Render custom HTML directly with Streamlit's HTML renderer.
+
+    This avoids Markdown interpreting indented HTML as a code block.
+    """
+
+    st.html(html)
+
+
+# =============================================================================
 # AUDIO
 # =============================================================================
 
@@ -659,9 +685,9 @@ initialize_state()
 )
 def generate_audio(text: str) -> bytes:
     """
-    Generate Japanese speech into memory.
+    Generate Japanese speech using gTTS.
 
-    Nothing is written to disk.
+    Audio is kept in memory and returned as bytes.
     """
 
     buffer = io.BytesIO()
@@ -682,14 +708,18 @@ def generate_audio(text: str) -> bytes:
 def render_play_button(
     japanese: str,
     key_suffix: str,
-    compact: bool = True,
+    large: bool = False,
 ) -> None:
     """
-    Render a 'Play' button and an autoplay-capable audio player.
+    Render ▶ Play.
 
-    The audio player is generated only after the learner explicitly
-    requests it. This prevents the Study page from making dozens
-    of gTTS requests on initial load.
+    Once pressed:
+        1. Generate or retrieve cached gTTS audio.
+        2. Show the Streamlit audio player.
+        3. Ask the browser to autoplay it.
+
+    Browser autoplay restrictions may still override autoplay,
+    in which case the native player remains available.
     """
 
     if not japanese:
@@ -697,46 +727,52 @@ def render_play_button(
 
     state_key = f"audio_visible_{key_suffix}"
 
-    label = "▶ Play" if compact else "▶ Play pronunciation"
+    label = (
+        "▶ Play pronunciation"
+        if large
+        else "▶ Play"
+    )
 
     if st.button(
         label,
         key=f"play_{key_suffix}",
-        help="Generate and play Japanese pronunciation",
+        use_container_width=large,
     ):
         st.session_state[state_key] = True
 
-    if st.session_state.get(state_key, False):
+    if st.session_state.get(
+        state_key,
+        False,
+    ):
 
         try:
 
-            audio_bytes = generate_audio(japanese)
+            audio_bytes = generate_audio(
+                japanese
+            )
 
-            # Streamlit has a native autoplay option.
             st.audio(
                 audio_bytes,
                 format="audio/mp3",
                 autoplay=True,
             )
 
-            st.caption(
-                "Autoplay is attempted automatically. "
-                "If your browser blocks it, tap ▶ on the player."
-            )
-
         except Exception:
+
             st.warning(
-                "Unable to generate Japanese audio right now. "
+                "Unable to generate pronunciation right now. "
                 "Please check your internet connection."
             )
 
 
 # =============================================================================
-# KANJIVG
+# KANJIVG STROKE GUIDE
 # =============================================================================
 
-def kanjivg_url(character: str) -> str:
-    """Build the official KanjiVG raw SVG URL."""
+def kanjivg_url(
+    character: str,
+) -> str:
+    """Build the KanjiVG SVG URL from the Unicode code point."""
 
     return (
         "https://raw.githubusercontent.com/"
@@ -749,18 +785,16 @@ def kanjivg_url(character: str) -> str:
     show_spinner=False,
     max_entries=200,
 )
-def fetch_stroke_svg(character: str) -> Optional[str]:
-    """
-    Fetch a KanjiVG SVG and return it as a string.
-
-    The SVG is cached by Streamlit so repeated opens do not repeatedly
-    download the same file.
-    """
+def fetch_stroke_svg(
+    character: str,
+) -> Optional[str]:
+    """Download and cache one KanjiVG SVG."""
 
     if not character:
         return None
 
     try:
+
         with urllib.request.urlopen(
             kanjivg_url(character),
             timeout=10,
@@ -774,80 +808,91 @@ def fetch_stroke_svg(character: str) -> Optional[str]:
         )
 
     except Exception:
+
         return None
 
 
-def animate_svg(svg: str) -> str:
+def animate_svg(
+    svg: str,
+) -> str:
     """
-    Add a sequential opacity animation to SVG path elements.
+    Add a sequential reveal animation to SVG path elements.
 
-    This creates a simple stroke-by-stroke reveal effect without
-    requiring JavaScript.
+    Each stroke fades in one after another.
     """
 
     if not svg:
         return ""
 
-    paths = list(
-        re.finditer(
-            r"<path\b[^>]*>",
-            svg,
-            flags=re.IGNORECASE,
-        )
+    path_pattern = re.compile(
+        r"<path\b[^>]*>",
+        re.IGNORECASE,
     )
 
-    if not paths:
+    matches = list(
+        path_pattern.finditer(svg)
+    )
+
+    if not matches:
         return svg
 
-    output = []
-    last_position = 0
+    output: List[str] = []
+    last_end = 0
 
-    for index, match in enumerate(paths):
+    for index, match in enumerate(matches):
 
         original = match.group(0)
 
         delay = index * 0.45
 
-        if "style=" in original:
+        animation_style = (
+            "opacity:0;"
+            "animation-name:strokeReveal;"
+            "animation-duration:0.5s;"
+            "animation-timing-function:ease-out;"
+            "animation-fill-mode:forwards;"
+            f"animation-delay:{delay:.2f}s;"
+        )
 
-            replacement = original.replace(
-                'style="',
-                f'style="animation-delay:{delay:.2f}s;',
-                1,
+        # Remove an existing style attribute to prevent CSS conflicts.
+        cleaned = re.sub(
+            r'\sstyle="[^"]*"',
+            "",
+            original,
+            flags=re.IGNORECASE,
+        )
+
+        if cleaned.endswith("/>"):
+
+            replacement = (
+                cleaned[:-2]
+                + f' style="{animation_style}"/>'
             )
 
         else:
 
-            replacement = original.replace(
-                ">",
-                (
-                    f' style="'
-                    f"animation:strokeReveal 0.42s ease-out "
-                    f"{delay:.2f}s forwards;"
-                    f"opacity:0;"
-                    f'">'
-                ),
-                1,
+            replacement = (
+                cleaned[:-1]
+                + f' style="{animation_style}">'
             )
 
         output.append(
-            svg[last_position : match.start()]
+            svg[last_end : match.start()]
         )
 
         output.append(
             replacement
         )
 
-        last_position = match.end()
+        last_end = match.end()
 
     output.append(
-        svg[last_position:]
+        svg[last_end:]
     )
 
-    final_svg = "".join(output)
+    result = "".join(output)
 
-    # Add animation CSS before the closing SVG tag.
-    animation_css = """
+    css = """
     <style>
         @keyframes strokeReveal {
             from {
@@ -866,25 +911,25 @@ def animate_svg(svg: str) -> str:
     </style>
     """
 
-    final_svg = final_svg.replace(
+    result = result.replace(
         "</svg>",
-        animation_css + "</svg>",
+        css + "</svg>",
     )
 
-    return final_svg
+    return result
 
 
 def render_stroke_guide(
     character: str,
 ) -> None:
-    """Render animated stroke guidance for a kana character."""
+    """Render stroke count, notes and animated SVG."""
 
-    stroke_count, note = STROKE_INFO.get(
+    count, note = STROKE_INFO.get(
         character,
         (0, "Stroke information unavailable."),
     )
 
-    st.markdown(
+    render_html(
         f"""
         <div class="stroke-panel">
             <div class="stroke-heading">
@@ -892,27 +937,28 @@ def render_stroke_guide(
             </div>
 
             <div class="stroke-count">
-                {stroke_count} stroke{"s" if stroke_count != 1 else ""}
+                {count} stroke{"s" if count != 1 else ""}
             </div>
 
             <div class="stroke-note">
                 {note}
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
-    svg = fetch_stroke_svg(character)
+    svg = fetch_stroke_svg(
+        character
+    )
 
     if svg:
 
-        animated = animate_svg(svg)
+        animated_svg = animate_svg(
+            svg
+        )
 
-        # st.html renders SVG/CSS directly in the Streamlit page.
         st.html(
-            animated,
-            width=250,
+            animated_svg
         )
 
         st.caption(
@@ -922,16 +968,18 @@ def render_stroke_guide(
     else:
 
         st.warning(
-            "Stroke diagram could not be loaded right now."
+            "Stroke diagram could not be loaded."
         )
 
 
 # =============================================================================
-# CSS
+# CUSTOM CSS
 # =============================================================================
 
-def inject_css(theme_name: str) -> None:
-    """Inject theme and responsive styling."""
+def inject_css(
+    theme_name: str,
+) -> None:
+    """Inject application-wide CSS."""
 
     theme = THEMES[theme_name]
 
@@ -945,20 +993,21 @@ def inject_css(theme_name: str) -> None:
         --muted: {theme["muted"]};
         --primary: {theme["primary"]};
         --primary-hover: {theme["primary_hover"]};
+        --secondary: {theme["secondary"]};
         --border: {theme["border"]};
         --accent: {theme["accent"]};
         --code-bg: {theme["code_bg"]};
     }}
 
-    /* ------------------------------------------------------------------
-       APP
-       ------------------------------------------------------------------ */
+    /* ==============================================================
+       GLOBAL
+       ============================================================== */
 
     .stApp {{
         background:
             radial-gradient(
                 circle at top right,
-                rgba(255,183,197,0.12),
+                rgba(255,183,197,.10),
                 transparent 30%
             ),
             var(--page-bg);
@@ -968,13 +1017,9 @@ def inject_css(theme_name: str) -> None:
 
     .main .block-container {{
         max-width: 1400px;
-        padding-top: 1.5rem;
+        padding-top: 1.4rem;
         padding-bottom: 4rem;
     }}
-
-    /* ------------------------------------------------------------------
-       TEXT
-       ------------------------------------------------------------------ */
 
     h1, h2, h3, h4, h5, p {{
         color: var(--text) !important;
@@ -984,12 +1029,23 @@ def inject_css(theme_name: str) -> None:
         color: var(--muted) !important;
     }}
 
-    /* ------------------------------------------------------------------
+    /* ==============================================================
+       SIDEBAR
+       ============================================================== */
+
+    section[data-testid="stSidebar"] {{
+        background: var(--card-bg);
+        border-right: 1px solid var(--border);
+    }}
+
+    /* ==============================================================
        BUTTONS
-       ------------------------------------------------------------------ */
+       ============================================================== */
 
     .stButton > button {{
-        border: 1px solid var(--border);
+        border:
+            1px solid var(--border);
+
         border-radius: 11px;
 
         background: var(--card-bg);
@@ -1000,65 +1056,79 @@ def inject_css(theme_name: str) -> None:
         min-height: 40px;
 
         transition:
-            transform 0.15s ease,
-            border-color 0.15s ease;
+            transform .15s ease,
+            border-color .15s ease;
     }}
 
     .stButton > button:hover {{
         border-color: var(--primary);
         color: var(--primary);
-        transform: translateY(-1px);
+
+        transform:
+            translateY(-1px);
     }}
 
-    /* ------------------------------------------------------------------
-       SIDEBAR
-       ------------------------------------------------------------------ */
-
-    section[data-testid="stSidebar"] {{
-        background: var(--card-bg);
-        border-right: 1px solid var(--border);
-    }}
-
-    /* ------------------------------------------------------------------
+    /* ==============================================================
        HERO
-       ------------------------------------------------------------------ */
+       ============================================================== */
 
     .hero {{
         background:
             linear-gradient(
                 135deg,
-                rgba(255,183,197,.16),
+                rgba(255,183,197,.15),
                 rgba(139,233,253,.08)
             ),
             var(--card-bg);
 
-        border: 1px solid var(--border);
+        border:
+            1px solid var(--border);
+
         border-radius: 24px;
 
-        padding: 1.8rem;
+        padding: 1.7rem;
 
-        margin-bottom: 1.3rem;
+        margin-bottom: 1.2rem;
 
         box-shadow:
             0 12px 35px rgba(0,0,0,.06);
     }}
 
     .hero-japanese {{
-        font-size: clamp(2.5rem, 6vw, 5rem);
-        line-height: 1.15;
+        font-size:
+            clamp(2.4rem, 6vw, 5rem);
+
         font-weight: 900;
+        line-height: 1.15;
+
         text-align: center;
     }}
 
     .hero-subtitle {{
         text-align: center;
+
         color: var(--muted);
-        margin-top: .6rem;
+
+        margin-top: .5rem;
     }}
 
-    /* ------------------------------------------------------------------
-       KANA CARDS
-       ------------------------------------------------------------------ */
+    /* ==============================================================
+       ROW LABEL
+       ============================================================== */
+
+    .row-label {{
+        color: var(--primary);
+
+        font-size: .85rem;
+        font-weight: 900;
+
+        margin-top: .9rem;
+        margin-bottom: .35rem;
+    }}
+
+    /* ==============================================================
+       KANA CARD
+       ============================================================== */
 
     .kana-card {{
         background: var(--card-bg);
@@ -1068,11 +1138,11 @@ def inject_css(theme_name: str) -> None:
 
         border-radius: 16px;
 
-        padding: .65rem .4rem;
+        padding: .8rem;
+
+        min-height: 125px;
 
         text-align: center;
-
-        min-height: 115px;
 
         display: flex;
         flex-direction: column;
@@ -1080,7 +1150,7 @@ def inject_css(theme_name: str) -> None:
         align-items: center;
 
         box-shadow:
-            0 5px 18px rgba(0,0,0,.035);
+            0 5px 18px rgba(0,0,0,.04);
     }}
 
     .kana-character {{
@@ -1090,7 +1160,9 @@ def inject_css(theme_name: str) -> None:
             "Hiragino Kaku Gothic ProN",
             sans-serif;
 
-        font-size: clamp(2.15rem, 4vw, 3.2rem);
+        font-size:
+            clamp(2.2rem, 7vw, 3.5rem);
+
         line-height: 1;
 
         font-weight: 900;
@@ -1099,22 +1171,18 @@ def inject_css(theme_name: str) -> None:
     }}
 
     .kana-romaji {{
-        font-size: .9rem;
+        margin-top: .4rem;
+
+        font-size: .88rem;
+
         font-weight: 800;
+
         color: var(--muted);
-        margin-top: .3rem;
     }}
 
-    .row-label {{
-        font-size: .85rem;
-        font-weight: 900;
-        color: var(--primary);
-        margin-bottom: .4rem;
-    }}
-
-    /* ------------------------------------------------------------------
+    /* ==============================================================
        STROKE PANEL
-       ------------------------------------------------------------------ */
+       ============================================================== */
 
     .stroke-panel {{
         background: var(--code-bg);
@@ -1131,25 +1199,33 @@ def inject_css(theme_name: str) -> None:
 
     .stroke-heading {{
         color: var(--primary);
+
         font-weight: 900;
     }}
 
     .stroke-count {{
-        font-size: 1.15rem;
+        color: var(--text);
+
+        font-size: 1.1rem;
+
         font-weight: 900;
+
         margin-top: .15rem;
     }}
 
     .stroke-note {{
         color: var(--muted);
-        font-size: .83rem;
+
+        font-size: .82rem;
+
         line-height: 1.45;
+
         margin-top: .3rem;
     }}
 
-    /* ------------------------------------------------------------------
-       QUIZ JAPANESE PROMPT
-       ------------------------------------------------------------------ */
+    /* ==============================================================
+       QUIZ PROMPT
+       ============================================================== */
 
     .japanese-prompt {{
         font-family:
@@ -1158,7 +1234,9 @@ def inject_css(theme_name: str) -> None:
             "Hiragino Kaku Gothic ProN",
             sans-serif;
 
-        font-size: clamp(2.4rem, 6vw, 4.8rem);
+        font-size:
+            clamp(2.4rem, 6vw, 4.8rem);
+
         line-height: 1.2;
 
         font-weight: 900;
@@ -1172,19 +1250,16 @@ def inject_css(theme_name: str) -> None:
 
         border-radius: 20px;
 
-        padding: 1.6rem .9rem;
+        padding: 1.5rem .8rem;
 
         margin: 1rem 0;
 
         color: var(--text);
-
-        box-shadow:
-            0 10px 30px rgba(0,0,0,.05);
     }}
 
-    /* ------------------------------------------------------------------
+    /* ==============================================================
        SCORE
-       ------------------------------------------------------------------ */
+       ============================================================== */
 
     .score-card {{
         background: var(--card-bg);
@@ -1194,7 +1269,7 @@ def inject_css(theme_name: str) -> None:
 
         border-radius: 20px;
 
-        padding: 1.7rem;
+        padding: 1.6rem;
 
         text-align: center;
     }}
@@ -1205,69 +1280,73 @@ def inject_css(theme_name: str) -> None:
 
     .score-percent {{
         font-size: 3.2rem;
+
         font-weight: 900;
+
         color: var(--primary);
+
+        margin: .3rem 0;
     }}
 
-    /* ------------------------------------------------------------------
+    /* ==============================================================
        MOBILE
-       ------------------------------------------------------------------ */
+       ============================================================== */
 
-    @media (max-width: 800px) {{
+    @media (max-width: 700px) {{
 
         .main .block-container {{
-            padding-left: .75rem;
-            padding-right: .75rem;
+            padding-left: .65rem;
+            padding-right: .65rem;
         }}
 
         .hero {{
-            padding: 1.2rem;
+            padding: 1.1rem;
+
             border-radius: 18px;
         }}
 
         .hero-japanese {{
-            font-size: 2.4rem;
+            font-size: 2.25rem;
         }}
 
         .hero-subtitle {{
-            font-size: .9rem;
+            font-size: .88rem;
         }}
 
         .kana-card {{
-            min-height: 98px;
-            padding: .45rem .25rem;
-            border-radius: 13px;
+            min-height: 105px;
+            padding: .55rem;
+            border-radius: 14px;
         }}
 
         .kana-character {{
-            font-size: 2rem;
+            font-size: 2.2rem;
         }}
 
         .kana-romaji {{
-            font-size: .8rem;
+            font-size: .78rem;
         }}
 
         .japanese-prompt {{
-            font-size: 2.1rem;
-            padding: 1.15rem .5rem;
-            border-radius: 15px;
+            font-size: 2rem;
+            padding: 1.1rem .5rem;
         }}
 
-        .stButton > button {{
-            min-height: 42px;
-        }}
     }}
 
     </style>
     """
 
-    st.markdown(
-        css,
-        unsafe_allow_html=True,
+    # st.html prevents Streamlit Markdown from treating the CSS as
+    # a visible code block.
+    st.html(
+        css
     )
 
 
-inject_css(st.session_state.theme)
+inject_css(
+    st.session_state.theme
+)
 
 
 # =============================================================================
@@ -1275,21 +1354,20 @@ inject_css(st.session_state.theme)
 # =============================================================================
 
 def render_sidebar() -> None:
-    """Render navigation, theme and quiz controls."""
+    """Render application navigation and quiz settings."""
 
     with st.sidebar:
 
-        st.markdown(
+        render_html(
             """
             <div style="
-                font-size: 1.7rem;
-                font-weight: 900;
-                margin-bottom: .4rem;
+                font-size:1.7rem;
+                font-weight:900;
+                margin-bottom:.4rem;
             ">
-                🇯🇵 JP Japanese Lab
+                🇯🇵 Japanese Lab
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
         st.caption(
@@ -1298,7 +1376,10 @@ def render_sidebar() -> None:
 
         st.divider()
 
-        # Theme
+        # ---------------------------------------------------------------------
+        # THEME
+        # ---------------------------------------------------------------------
+
         theme = st.selectbox(
             "🎨 Appearance",
             list(THEMES.keys()),
@@ -1308,12 +1389,17 @@ def render_sidebar() -> None:
         )
 
         if theme != st.session_state.theme:
+
             st.session_state.theme = theme
+
             st.rerun()
 
         st.divider()
 
-        # Navigation
+        # ---------------------------------------------------------------------
+        # NAVIGATION
+        # ---------------------------------------------------------------------
+
         page = st.radio(
             "Mode",
             ["Study", "Quiz"],
@@ -1325,12 +1411,20 @@ def render_sidebar() -> None:
         )
 
         if page != st.session_state.page:
+
             st.session_state.page = page
+
             st.rerun()
 
         st.divider()
 
-        st.subheader("Quiz Settings")
+        # ---------------------------------------------------------------------
+        # QUIZ SETTINGS
+        # ---------------------------------------------------------------------
+
+        st.subheader(
+            "Quiz Settings"
+        )
 
         categories = st.multiselect(
             "Topics",
@@ -1362,6 +1456,7 @@ def render_sidebar() -> None:
             use_container_width=True,
             type="primary",
         ):
+
             start_new_quiz(
                 categories,
                 length,
@@ -1373,26 +1468,26 @@ def render_sidebar() -> None:
 
         if st.session_state.missed_questions:
 
-            st.markdown(
+            render_html(
                 f"""
                 <div style="
                     margin-top:.7rem;
                     padding:.65rem;
                     border-radius:10px;
                     background:var(--code-bg);
-                    font-size:.85rem;
+                    font-size:.84rem;
                 ">
                     🎯 {len(st.session_state.missed_questions)}
                     missed question(s) ready for review
                 </div>
-                """,
-                unsafe_allow_html=True,
+                """
             )
 
             if st.button(
                 "🎯 Practice Missed",
                 use_container_width=True,
             ):
+
                 start_missed_quiz()
 
                 st.session_state.page = "Quiz"
@@ -1413,24 +1508,23 @@ def render_kana_card(
 
     if not kana:
 
-        st.markdown(
+        render_html(
             """
             <div style="
-                min-height:98px;
-                opacity:.15;
+                min-height:105px;
                 display:flex;
                 align-items:center;
                 justify-content:center;
+                opacity:.12;
             ">
                 ・
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
         return
 
-    st.markdown(
+    render_html(
         f"""
         <div class="kana-card">
 
@@ -1443,8 +1537,7 @@ def render_kana_card(
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     render_play_button(
@@ -1468,75 +1561,97 @@ def render_kana_chart(
     ],
     chart_id: str,
 ) -> None:
-    """Render the complete kana chart."""
+    """
+    Render the kana chart.
+
+    Two columns are intentionally used instead of five.
+    This makes the chart much easier to use on a phone.
+    """
 
     for row_index, (label, row) in enumerate(rows):
 
-        st.markdown(
+        render_html(
             f"""
             <div class="row-label">
                 {label}
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
-        cols = st.columns(5)
+        # Two-column mobile-friendly layout.
+        for start in range(
+            0,
+            len(row),
+            2,
+        ):
 
-        for col_index, col in enumerate(cols):
+            pair = row[
+                start : start + 2
+            ]
 
-            kana, romaji = row[col_index]
+            cols = st.columns(2)
 
-            with col:
+            for column_index, column in enumerate(cols):
 
-                render_kana_card(
-                    kana,
-                    romaji,
-                    f"{chart_id}_{row_index}_{col_index}",
-                )
+                if column_index >= len(pair):
+                    continue
+
+                kana, romaji = pair[
+                    column_index
+                ]
+
+                with column:
+
+                    render_kana_card(
+                        kana,
+                        romaji,
+                        f"{chart_id}_{row_index}_{start + column_index}",
+                    )
 
 
 def render_expressions() -> None:
-    """Render phrase study section."""
+    """Render essential Japanese expressions."""
 
-    st.subheader("💬 Essential Expressions")
-
-    cols = st.columns(2)
+    st.subheader(
+        "💬 Essential Expressions"
+    )
 
     for index, (jp, en) in enumerate(PHRASES):
 
-        with cols[index % 2]:
+        render_html(
+            f"""
+            <div class="kana-card"
+                 style="margin-bottom:.4rem;">
 
-            st.markdown(
-                f"""
-                <div class="study-card">
-                    <div class="kana-character"
-                         style="font-size:2.0rem;">
-                        {jp}
-                    </div>
-
-                    <div class="kana-romaji">
-                        {en}
-                    </div>
+                <div class="kana-character"
+                     style="font-size:2rem;">
+                    {jp}
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
-            render_play_button(
-                jp,
-                f"phrase_{index}",
-            )
+                <div class="kana-romaji">
+                    {en}
+                </div>
+
+            </div>
+            """
+        )
+
+        render_play_button(
+            jp,
+            f"phrase_{index}",
+        )
 
 
 def render_grammar() -> None:
-    """Render particle and counter reference."""
+    """Render particles and counter references."""
 
     particle_col, counter_col = st.columns(2)
 
     with particle_col:
 
-        st.subheader("🧠 Particles")
+        st.subheader(
+            "🧠 Particles"
+        )
 
         st.markdown(
             """
@@ -1553,7 +1668,9 @@ def render_grammar() -> None:
 
     with counter_col:
 
-        st.subheader("🔢 Counters")
+        st.subheader(
+            "🔢 Counters"
+        )
 
         st.markdown(
             """
@@ -1574,9 +1691,9 @@ def render_grammar() -> None:
 # =============================================================================
 
 def render_study_page() -> None:
-    """Render the complete Study area."""
+    """Render the complete study experience."""
 
-    st.markdown(
+    render_html(
         """
         <div class="hero">
 
@@ -1590,8 +1707,7 @@ def render_study_page() -> None:
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     tabs = st.tabs(
@@ -1603,13 +1719,19 @@ def render_study_page() -> None:
         ]
     )
 
+    # -------------------------------------------------------------------------
+    # HIRAGANA
+    # -------------------------------------------------------------------------
+
     with tabs[0]:
 
-        st.subheader("Hiragana Gojūon")
+        st.subheader(
+            "Hiragana Gojūon"
+        )
 
         st.caption(
-            "Tap ▶ Play to hear the character. "
-            "Open ✍ Stroke for the handwriting guide."
+            "Tap ▶ Play for pronunciation. "
+            "Open ✍ Stroke for handwriting guidance."
         )
 
         render_kana_chart(
@@ -1617,12 +1739,18 @@ def render_study_page() -> None:
             "hiragana",
         )
 
+    # -------------------------------------------------------------------------
+    # KATAKANA
+    # -------------------------------------------------------------------------
+
     with tabs[1]:
 
-        st.subheader("Katakana Gojūon")
+        st.subheader(
+            "Katakana Gojūon"
+        )
 
         st.caption(
-            "Useful for loanwords, foreign names, "
+            "Commonly used for loanwords, foreign names, "
             "emphasis and technical vocabulary."
         )
 
@@ -1631,9 +1759,17 @@ def render_study_page() -> None:
             "katakana",
         )
 
+    # -------------------------------------------------------------------------
+    # EXPRESSIONS
+    # -------------------------------------------------------------------------
+
     with tabs[2]:
 
         render_expressions()
+
+    # -------------------------------------------------------------------------
+    # GRAMMAR
+    # -------------------------------------------------------------------------
 
     with tabs[3]:
 
@@ -1641,15 +1777,17 @@ def render_study_page() -> None:
 
 
 # =============================================================================
-# QUIZ ENGINE
+# QUIZ HELPERS
 # =============================================================================
 
 def get_quiz_questions(
     categories: Sequence[str],
 ) -> List[Question]:
-    """Return all questions matching selected categories."""
+    """Return questions matching selected categories."""
 
-    categories_set = set(categories)
+    categories_set = set(
+        categories
+    )
 
     if "Both Kana" in categories_set:
 
@@ -1671,7 +1809,7 @@ def start_new_quiz(
     categories: Sequence[str],
     length: int,
 ) -> None:
-    """Create a normal quiz round."""
+    """Start a normal randomized quiz."""
 
     available = get_quiz_questions(
         categories
@@ -1680,19 +1818,19 @@ def start_new_quiz(
     if not available:
 
         st.warning(
-            "Select at least one quiz category."
+            "Please select at least one quiz category."
         )
 
         return
 
-    length = min(
+    actual_length = min(
         length,
         len(available),
     )
 
     selected = random.sample(
         available,
-        length,
+        actual_length,
     )
 
     st.session_state.quiz_questions = selected
@@ -1706,7 +1844,7 @@ def start_new_quiz(
 
 
 def start_missed_quiz() -> None:
-    """Create a quiz containing only the previous mistakes."""
+    """Start a quiz containing only the questions previously missed."""
 
     missed = (
         st.session_state.missed_questions.copy()
@@ -1733,10 +1871,9 @@ def get_stable_options(
     question: Question,
 ) -> List[str]:
     """
-    Return stable randomized options.
+    Create answer choices once per question.
 
-    The options are created once and then stored in session_state
-    so a Streamlit rerun can't shuffle the answers unexpectedly.
+    This prevents choices from changing during Streamlit reruns.
     """
 
     key = question.question_id
@@ -1749,7 +1886,9 @@ def get_stable_options(
             )
         )
 
-        random.shuffle(options)
+        random.shuffle(
+            options
+        )
 
         st.session_state.quiz_options[key] = options
 
@@ -1761,9 +1900,11 @@ def get_stable_options(
 # =============================================================================
 
 def render_quiz_page() -> None:
-    """Render the active quiz."""
+    """Render an active quiz or quiz landing page."""
 
-    questions = st.session_state.quiz_questions
+    questions = (
+        st.session_state.quiz_questions
+    )
 
     if not questions:
 
@@ -1780,18 +1921,23 @@ def render_quiz_page() -> None:
 
         return
 
-    question = questions[
+    index = (
         st.session_state.quiz_index
-    ]
+    )
 
-    total = len(questions)
+    total = len(
+        questions
+    )
 
-    index = st.session_state.quiz_index
+    question = questions[index]
 
-    if st.session_state.quiz_mode == "missed":
+    if (
+        st.session_state.quiz_mode
+        == "missed"
+    ):
 
         st.info(
-            "🎯 Targeted Review: "
+            "🎯 Targeted Review Mode: "
             "these are questions you previously missed."
         )
 
@@ -1825,40 +1971,42 @@ def render_quiz_page() -> None:
 
     st.divider()
 
-    st.markdown(
+    render_html(
         f"""
         <div style="
             text-align:center;
-            font-size:1.1rem;
+            font-size:1.08rem;
             font-weight:800;
             color:var(--muted);
         ">
             {question.prompt}
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     if question.japanese:
 
-        st.markdown(
+        render_html(
             f"""
             <div class="japanese-prompt">
                 {question.japanese}
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
         render_play_button(
             question.japanese,
             f"quiz_{question.question_id}",
-            compact=False,
+            large=True,
         )
 
     options = get_stable_options(
         question
     )
+
+    # -------------------------------------------------------------------------
+    # Answer stage
+    # -------------------------------------------------------------------------
 
     if not st.session_state.quiz_answered:
 
@@ -1883,7 +2031,7 @@ def render_quiz_page() -> None:
             if selected is None:
 
                 st.warning(
-                    "Choose an answer first."
+                    "Please choose an answer first."
                 )
 
                 st.stop()
@@ -1902,6 +2050,10 @@ def render_quiz_page() -> None:
                 )
 
             st.rerun()
+
+    # -------------------------------------------------------------------------
+    # Feedback stage
+    # -------------------------------------------------------------------------
 
     else:
 
@@ -1930,24 +2082,22 @@ def render_quiz_page() -> None:
 
             render_play_button(
                 question.japanese,
-                f"quiz_again_{question.question_id}",
-                compact=False,
+                f"again_{question.question_id}",
+                large=True,
             )
 
         st.divider()
 
-        last_question = (
-            index + 1 >= total
-        )
+        if index + 1 >= total:
 
-        label = (
-            "🏁 Finish Round"
-            if last_question
-            else "➡️ Next Question"
-        )
+            button_text = "🏁 Finish Round"
+
+        else:
+
+            button_text = "➡️ Next Question"
 
         if st.button(
-            label,
+            button_text,
             use_container_width=True,
             type="primary",
         ):
@@ -1964,34 +2114,41 @@ def render_quiz_page() -> None:
 # =============================================================================
 
 def render_quiz_landing() -> None:
-    """Render the no-active-quiz state."""
+    """Render the quiz setup landing page."""
 
-    st.title("📝 Japanese Quiz")
+    st.title(
+        "📝 Japanese Quiz"
+    )
 
     st.markdown(
         """
-        Test yourself on kana, expressions, grammar,
-        particles and Japanese counters.
+        Test your Japanese knowledge across kana,
+        expressions, grammar, particles and counters.
+
+        Choose the topics and round length from the sidebar.
         """
     )
 
     st.divider()
 
-    cols = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    with cols[0]:
+    with col1:
+
         st.metric(
             "Round Sizes",
             "10 / 25 / 50",
         )
 
-    with cols[1]:
+    with col2:
+
         st.metric(
             "Categories",
             "6",
         )
 
-    with cols[2]:
+    with col3:
+
         st.metric(
             "Rating",
             "0–3 ⭐",
@@ -2000,7 +2157,7 @@ def render_quiz_landing() -> None:
     st.divider()
 
     st.info(
-        "Choose your topics and round length in the sidebar, "
+        "Configure your quiz from the sidebar, "
         "then press Start New Quiz."
     )
 
@@ -2023,7 +2180,7 @@ def render_quiz_landing() -> None:
 def get_star_rating(
     percentage: float,
 ) -> int:
-    """Convert percentage into the requested rating."""
+    """Return the 0–3 star rating."""
 
     if percentage >= 100:
         return 3
@@ -2038,7 +2195,7 @@ def get_star_rating(
 
 
 def render_quiz_results() -> None:
-    """Render final score and missed-question review."""
+    """Render score, stars and missed-question review."""
 
     total = len(
         st.session_state.quiz_questions
@@ -2064,9 +2221,11 @@ def render_quiz_results() -> None:
         else "☆☆☆"
     )
 
-    st.title("🏆 Round Complete!")
+    st.title(
+        "🏆 Round Complete!"
+    )
 
-    st.markdown(
+    render_html(
         f"""
         <div class="score-card">
 
@@ -2083,8 +2242,7 @@ def render_quiz_results() -> None:
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     st.divider()
@@ -2098,7 +2256,7 @@ def render_quiz_results() -> None:
     elif stars == 2:
 
         st.success(
-            "Great job! You're very close to a perfect round."
+            "Great job! You're very close to perfect."
         )
 
     elif stars == 1:
@@ -2110,7 +2268,7 @@ def render_quiz_results() -> None:
     else:
 
         st.error(
-            "Let's use the mistakes as your study list."
+            "Let's turn the mistakes into your study list."
         )
 
     missed = (
@@ -2141,20 +2299,19 @@ def render_quiz_results() -> None:
 
                 if question.japanese:
 
-                    st.markdown(
+                    render_html(
                         f"""
                         <div class="japanese-prompt"
                              style="font-size:2.4rem;">
                             {question.japanese}
                         </div>
-                        """,
-                        unsafe_allow_html=True,
+                        """
                     )
 
                     render_play_button(
                         question.japanese,
                         f"missed_{question.question_id}",
-                        compact=False,
+                        large=True,
                     )
 
                 st.markdown(
@@ -2181,6 +2338,7 @@ def render_quiz_results() -> None:
             ):
 
                 start_missed_quiz()
+
                 st.rerun()
 
     with col2:
@@ -2205,15 +2363,16 @@ def render_quiz_results() -> None:
         ):
 
             st.session_state.page = "Study"
+
             st.rerun()
 
 
 # =============================================================================
-# APP ENTRY POINT
+# MAIN
 # =============================================================================
 
 def main() -> None:
-    """Run the application."""
+    """Main application entry point."""
 
     render_sidebar()
 
